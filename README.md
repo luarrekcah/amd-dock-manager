@@ -96,7 +96,7 @@ AMD Dock Manager is **100% autonomous**. You don't need to manually install QEMU
 Clone the repository, install the Electron dependencies, and start the app:
 
 ```bash
-git clone https://github.com/devluar/ryzentosh-docker.git
+git clone https://github.com/luarrekcah/amd-dock-manager.git
 cd ryzentosh-docker
 npm install
 npm start
