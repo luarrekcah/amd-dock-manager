@@ -1,6 +1,6 @@
 {
   "name": "amd-dock-manager",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "QEMU TCG Docker Manager for AMD Hackintosh - Bypasses HVF using software emulation",
   "main": "src/main/main.js",
   "homepage": "https://devluar.com",
