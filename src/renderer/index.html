@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AMD Dock Manager — QEMU TCG Engine</title>
+  <meta name="description" content="Docker manager for AMD Hackintosh using QEMU TCG software emulation, bypassing Apple HVF." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ─── TITLEBAR (macOS traffic lights area) ─────────────────────────── -->
+  <div class="titlebar" id="titlebar">
+    <div class="titlebar-drag"></div>
+    <div class="titlebar-title">
+      <span class="brand-icon">⬡</span>
+      AMD Dock Manager
+    </div>
+    <div class="titlebar-badge" id="accel-badge">TCG · No HVF</div>
+  </div>
+
+  <!-- ─── SIDEBAR NAV ───────────────────────────────────────────────────── -->
+  <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main Navigation">
+    <div class="nav-logo">
+      <div class="logo-hex">⬡</div>
+      <div class="logo-text">
+        <span class="logo-title">AMD Dock</span>
+        <span class="logo-sub">QEMU TCG</span>
+      </div>
+    </div>
+
+    <ul class="nav-list" role="list">
+      <li>
+        <button class="nav-item active" id="nav-dashboard" data-view="dashboard" aria-current="page">
+          <span class="nav-icon">◉</span>
+          <span>Dashboard</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" id="nav-containers" data-view="containers">
+          <span class="nav-icon">⊡</span>
+          <span>Containers</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" id="nav-settings" data-view="settings">
+          <span class="nav-icon">⊙</span>
+          <span>Settings</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" id="nav-logs" data-view="logs">
+          <span class="nav-icon">≡</span>
+          <span>Logs</span>
+        </button>
+      </li>
+    </ul>
+
+    <div class="nav-footer">
+      <div class="env-hint" id="env-hint" style="display:none">
+        <span class="env-label">DOCKER_HOST</span>
+        <code class="env-value" id="env-value"></code>
+      </div>
+      <div class="nav-version">v1.0.0 · Ryzentosh</div>
+    </div>
+  </nav>
+
+  <!-- ─── MAIN CONTENT ──────────────────────────────────────────────────── -->
+  <main class="main-content" id="main-content" role="main">
+
+    <!-- ═══ VIEW: DASHBOARD ════════════════════════════════════════════════ -->
+    <section class="view" id="view-dashboard" aria-label="Dashboard">
+
+      <header class="view-header">
+        <h1>Engine Dashboard</h1>
+        <p class="view-subtitle">QEMU TCG · AMD-compatible software emulation</p>
+      </header>
+
+      <!-- Status Card -->
+      <div class="card status-card" id="status-card">
+        <div class="status-card-left">
+          <div class="engine-status-indicator" id="engine-indicator" data-state="stopped">
+            <div class="indicator-ring"></div>
+            <div class="indicator-dot"></div>
+          </div>
+          <div class="engine-status-text">
+            <span class="status-label">Engine Status</span>
+            <span class="status-value" id="status-text">Stopped</span>
+          </div>
+        </div>
+        <div class="status-card-right">
+          <div class="accel-badge-large">
+            <span class="accel-icon">⚡</span>
+            <div>
+              <div class="accel-title">Acceleration: TCG</div>
+              <div class="accel-sub">HVF disabled — AMD safe</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Buttons -->
+      <div class="control-panel">
+        <button class="btn btn-primary" id="btn-start" onclick="vmControl('start')">
+          <span class="btn-icon">▶</span>
+          Start Engine
+        </button>
+        <button class="btn btn-danger" id="btn-stop" onclick="vmControl('stop')" disabled>
+          <span class="btn-icon">■</span>
+          Stop Engine
+        </button>
+        <button class="btn btn-warning" id="btn-restart" onclick="vmControl('restart')" disabled>
+          <span class="btn-icon">↺</span>
+          Force Restart
+        </button>
+        <button class="btn btn-ghost" id="btn-terminal" onclick="openTerminal()">
+          <span class="btn-icon">$</span>
+          Open Terminal
+        </button>
+      </div>
+
+      <!-- Resource Monitors -->
+      <div class="resource-grid">
+        <div class="card resource-card" id="cpu-card">
+          <div class="resource-header">
+            <span class="resource-icon">⬡</span>
+            <span class="resource-title">CPU Usage</span>
+            <span class="resource-value" id="cpu-value">—</span>
+          </div>
+          <div class="resource-bar-track">
+            <div class="resource-bar cpu-bar" id="cpu-bar" style="width:0%"></div>
+          </div>
+          <div class="resource-meta">
+            <span id="cpu-cores-label">Allocated: — cores (TCG multi-thread)</span>
+          </div>
+        </div>
+
+        <div class="card resource-card" id="ram-card">
+          <div class="resource-header">
+            <span class="resource-icon">◈</span>
+            <span class="resource-title">RAM Usage</span>
+            <span class="resource-value" id="ram-value">—</span>
+          </div>
+          <div class="resource-bar-track">
+            <div class="resource-bar ram-bar" id="ram-bar" style="width:0%"></div>
+          </div>
+          <div class="resource-meta">
+            <span id="ram-total-label">Total: — MB allocated</span>
+          </div>
+        </div>
+
+        <div class="card resource-card uptime-card">
+          <div class="resource-header">
+            <span class="resource-icon">◷</span>
+            <span class="resource-title">Uptime</span>
+            <span class="resource-value" id="uptime-value">—</span>
+          </div>
+          <div class="uptime-info">
+            <div class="uptime-dot" id="uptime-dot"></div>
+            <span id="uptime-state-text">Engine Offline</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ═══ VIEW: CONTAINERS ═══════════════════════════════════════════════ -->
+    <section class="view hidden" id="view-containers" aria-label="Containers">
+
+      <header class="view-header">
+        <h1>Docker Containers</h1>
+        <p class="view-subtitle">Managed via QEMU TCG VM</p>
+        <button class="btn btn-ghost btn-sm" id="btn-refresh-containers" onclick="refreshContainers()">
+          <span class="btn-icon">↻</span> Refresh
+        </button>
+      </header>
+
+      <div id="containers-placeholder" class="placeholder-state">
+        <div class="placeholder-icon">⊡</div>
+        <h2>Engine Offline</h2>
+        <p>Start the QEMU TCG engine to manage containers.</p>
+      </div>
+
+      <div id="containers-loading" class="loading-state hidden">
+        <div class="spinner"></div>
+        <span>Loading containers...</span>
+      </div>
+
+      <div id="containers-empty" class="placeholder-state hidden">
+        <div class="placeholder-icon">⊡</div>
+        <h2>No containers found</h2>
+        <p>Create a container with <code>docker run</code> to see it here.</p>
+      </div>
+
+      <div class="containers-table-wrapper hidden" id="containers-table-wrapper">
+        <table class="containers-table" id="containers-table" aria-label="List of Docker containers">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Name</th>
+              <th>Image</th>
+              <th>Ports</th>
+              <th>State</th>
+              <th class="th-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="containers-body"></tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- ═══ VIEW: SETTINGS ═════════════════════════════════════════════════ -->
+    <section class="view hidden" id="view-settings" aria-label="Settings">
+
+      <header class="view-header">
+        <h1>Settings Advanced</h1>
+        <p class="view-subtitle">QEMU TCG Parameters — applied on next start</p>
+      </header>
+
+      <div class="settings-grid">
+
+        <div class="card settings-card">
+          <div class="settings-section-title">
+            <span>⬡</span> Processing (TCG)
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label" for="setting-cpu">CPU Cores</label>
+              <span class="setting-desc">TCG multi-thread threads. More cores = better throughput (but still software)</span>
+            </div>
+            <div class="setting-control">
+              <input type="range" id="setting-cpu" class="slider" min="1" max="16" value="4"
+                     aria-label="Number of CPU cores" oninput="updateSlider('cpu', this.value)" />
+              <div class="slider-value" id="cpu-slider-val">4 <span>cores</span></div>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label" for="setting-ram">RAM Memory</label>
+              <span class="setting-desc">Memory allocated for the QEMU VM. Recommended minimum: 2048 MB</span>
+            </div>
+            <div class="setting-control">
+              <input type="range" id="setting-ram" class="slider" min="512" max="32768" step="512" value="4096"
+                     aria-label="RAM Memory em MB" oninput="updateSlider('ram', this.value)" />
+              <div class="slider-value" id="ram-slider-val">4096 <span>MB</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card settings-card">
+          <div class="settings-section-title">
+            <span>⊙</span> Network & Ports
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label" for="setting-ssh-port">SSH Port</label>
+              <span class="setting-desc">macOS host port mapped to VM port 22</span>
+            </div>
+            <div class="setting-control">
+              <input type="number" id="setting-ssh-port" class="input-number" min="1024" max="65535" value="2222"
+                     aria-label="SSH Port" />
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label" for="setting-docker-port">Docker API Port</label>
+              <span class="setting-desc">Optional TCP port for HTTP access to Docker daemon</span>
+            </div>
+            <div class="setting-control">
+              <input type="number" id="setting-docker-port" class="input-number" min="1024" max="65535" value="2375"
+                     aria-label="Porta Docker" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card settings-card warn-card">
+          <div class="settings-section-title">
+            <span>⚡</span> Acceleration (Read-only)
+          </div>
+          <div class="warn-row">
+            <div class="warn-icon">⚠</div>
+            <div class="warn-text">
+              <strong>-accel tcg</strong> is fixed and mandatory.<br />
+              On AMD Hackintosh, o HVF (Hypervisor.framework) returns <code>HV_ERROR</code> immediately and cannot be used.<br />
+              QEMU TCG (Tiny Code Generator) performs 100% software emulation, ensuring full compatibility with any CPU.
+            </div>
+          </div>
+          <div class="accel-flags">
+            <div class="flag-chip active">-accel tcg</div>
+            <div class="flag-chip active">thread=multi</div>
+            <div class="flag-chip inactive strikethrough">-accel hvf ✗</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn btn-primary" id="btn-save-settings" onclick="saveSettings()">
+          <span class="btn-icon">✓</span> Save Settings
+        </button>
+        <span class="settings-note">The VM must be restarted to apply changes.</span>
+      </div>
+
+    </section>
+
+    <!-- ═══ VIEW: LOGS ══════════════════════════════════════════════════════ -->
+    <section class="view hidden" id="view-logs" aria-label="Logs">
+
+      <header class="view-header">
+        <h1>System Logs</h1>
+        <p class="view-subtitle">Stdout/Stderr do QEMU TCG and internal events</p>
+        <div class="log-controls">
+          <button class="btn btn-ghost btn-sm" onclick="clearLogs()">Clear</button>
+          <button class="btn btn-ghost btn-sm" id="btn-autoscroll"
+                  onclick="toggleAutoscroll()" aria-pressed="true">Auto-scroll ON</button>
+        </div>
+      </header>
+
+      <div class="log-panel" id="log-panel" aria-live="polite" aria-label="Log output">
+        <div class="log-entry log-system">
+          <span class="log-time">—</span>
+          <span class="log-type">SYSTEM</span>
+          <span class="log-msg">AMD Dock Manager started. Waiting for commands...</span>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ─── MODAL: Container Logs ──────────────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="logs-modal" role="dialog" aria-modal="true" aria-label="Container Logs">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">Logs — container</h2>
+        <button class="modal-close" id="modal-close" onclick="closeLogsModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre class="modal-log-output" id="modal-log-output">Loading...</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TOAST NOTIFICATIONS ───────────────────────────────────────────── -->
+  <div class="toast-container" id="toast-container" aria-live="assertive"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
